@@ -1,12 +1,19 @@
 {
   "$schema": "https://smithery.ai/schema/server-card.json",
   "name": "agent-token-stripper",
+  "displayName": "Agent Token Stripper",
   "description": "Autonomous x402 Machine-to-Machine Token Stripper API settling $0.002 USDC micro-payments on Base L2.",
+  "homepage": "https://github.com/GoldMineX/gold-mind-max",
+  "icon": "https://gold-mind-max.vercel.app/favicon.ico",
   "version": "1.0.0",
   "tools": [
     {
       "name": "extract_text",
       "description": "Strips scripts, styles, and HTML tags from a URL to return context-efficient plain text for LLM processing.",
+      "annotations": {
+        "title": "Extract Plain Text",
+        "readOnly": true
+      },
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -16,6 +23,17 @@
           }
         },
         "required": ["url"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "url": { "type": "string" },
+          "extracted_text": { "type": "string" },
+          "payment_received": { "type": "boolean" },
+          "amount_settled_usdc": { "type": "string" }
+        },
+        "required": ["status", "url", "extracted_text", "payment_received", "amount_settled_usdc"]
       }
     }
   ]
