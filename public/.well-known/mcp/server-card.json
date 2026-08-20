@@ -4,7 +4,8 @@
   "displayName": "Agent Token Stripper",
   "description": "Autonomous x402 Machine-to-Machine Token Stripper API settling $0.002 USDC micro-payments on Base L2.",
   "homepage": "https://github.com/GoldMineX/gold-mind-max",
-  "icon": "https://gold-mind-max.vercel.app/favicon.ico",
+  "iconUrl": "https://api.dicebear.com/7.x/bottts/png?seed=gold-mind-max&backgroundColor=f59e0b"
+
   "version": "1.0.0",
   "tools": [
     {
