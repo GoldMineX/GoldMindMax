@@ -1,0 +1,22 @@
+{
+  "$schema": "https://smithery.ai/schema/server-card.json",
+  "name": "agent-token-stripper",
+  "description": "Autonomous x402 Machine-to-Machine Token Stripper API settling $0.002 USDC micro-payments on Base L2.",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "extract_text",
+      "description": "Strips scripts, styles, and HTML tags from a URL to return context-efficient plain text for LLM processing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Target webpage URL to scrape and clean."
+          }
+        },
+        "required": ["url"]
+      }
+    }
+  ]
+}
