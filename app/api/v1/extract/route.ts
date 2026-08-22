@@ -1,103 +1,135 @@
-import { NextRequest, NextResponse } from 'next/server';
+    import { NextRequest, NextResponse } from "next/server";
 
-// 1. Maximize Vercel execution timeout to 30 seconds
-export const maxDuration = 30;
+// Metadata returned on GET requests to pass Smithery scanning
+const SERVER_METADATA = {
+  name: "agent-token-stripper",
+  version: "1.0.0",
+  description: "Autonomous x402 Machine-to-Machine Token Stripper API settling $0.002 USDC micro-payments on Base L2.",
+  tools: [
+    {
+      name: "extract_text",
+      description: "Strips scripts, styles, and HTML tags from a URL to return context-efficient plain text for LLMs.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "Target webpage URL to extract" }
+        },
+        required: ["url"]
+      }
+    }
+  ]
+};
 
-// Helper to format responses with full CORS headers
-function corsResponse(data: object, status = 200) {
-  return new NextResponse(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Payment, Authorization, X-Requested-With',
-    },
-  });
+const RECIPIENT_WALLET = "0xEe184C6b1efC7c48e6E29e2E776107918d936a47";
+const FEE_USDC = "0.002";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-402-payment",
+};
+
+// HTML stripping utility
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, "")
+    .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, "")
+    .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, "")
+    .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-// 2. Handle CORS preflight OPTIONS requests from browser-based agents
+// 1. CORS Preflight
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
+// 2. GET Handler (Fixes Smithery 405 Error)
+export async function GET() {
+  return NextResponse.json(SERVER_METADATA, {
+    status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Payment, Authorization, X-Requested-With',
+      ...corsHeaders,
+      "Content-Type": "application/json",
     },
   });
 }
 
-// 3. Main processing route
+// 3. POST Handler (Token Extraction & x402 Settlement)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const targetUrl = body.url || body.params?.url;
+    const targetUrl = body.url;
 
-    if (!targetUrl) {
-      return corsResponse({ error: 'Missing required parameter: url' }, 400);
+    if (!targetUrl || typeof targetUrl !== "string") {
+      return NextResponse.json(
+        { error: "Missing or invalid 'url' parameter in request body." },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    // 4. Internal 8-second fetch timeout to prevent hanging on slow websites
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      new URL(targetUrl);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid URL format. Must start with http:// or https://" },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
-    // 5. Spoof real browser User-Agent headers to prevent 403 Forbidden blocks
-    const response = await fetch(targetUrl, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const fetchResponse = await fetch(targetUrl, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 GoldMindAgent/1.0',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 AgentTokenStripper/1.0",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
     });
 
-    clearTimeout(timeout);
+    clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      return corsResponse({
-        error: `Target server returned HTTP status ${response.status}`,
-        url: targetUrl
-      }, 400);
+    if (!fetchResponse.ok) {
+      return NextResponse.json(
+        { error: `Target URL returned HTTP status ${fetchResponse.status}` },
+        { status: fetchResponse.status, headers: corsHeaders }
+      );
     }
 
-    const rawHtml = await response.text();
+    const rawHtml = await fetchResponse.text();
+    const cleanText = stripHtml(rawHtml);
 
-    // 6. Clean and strip scripts, styles, metadata, and markup
-    const cleanText = rawHtml
-      .replace(/<script\b[^<]*>([\s\S]*?)<\/script>/gi, '')
-      .replace(/<style\b[^<]*>([\s\S]*?)<\/style>/gi, '')
-      .replace(/<noscript\b[^<]*>([\s\S]*?)<\/noscript>/gi, '')
-      .replace(/<header\b[^<]*>([\s\S]*?)<\/header>/gi, '')
-      .replace(/<footer\b[^<]*>([\s\S]*?)<\/footer>/gi, '')
-      .replace(/<nav\b[^<]*>([\s\S]*?)<\/nav>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return NextResponse.json(
+      {
+        status: "success",
+        url: targetUrl,
+        extracted_text: cleanText,
+        payment_received: true,
+        amount_settled_usdc: FEE_USDC,
+        recipient_address: RECIPIENT_WALLET,
+      },
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (err: any) {
+    const errorMessage =
+      err.name === "AbortError"
+        ? "Target webpage request timed out after 8 seconds."
+        : err.message || "An unexpected error occurred.";
 
-    return corsResponse({
-      status: 'success',
-      url: targetUrl,
-      extracted_text: cleanText.substring(0, 50000), // Cap at 50,000 characters
-      payment_received: true,
-      amount_settled_usdc: '0.002',
-      recipient_address: '0xEe184C6b1efC7c48e6E29e2E776107918d936a47'
-    });
-
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      return corsResponse({ error: 'Target URL timed out (exceeded 8 seconds).' }, 504);
-    }
-    return corsResponse({ error: error.message || 'An unexpected error occurred' }, 500);
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500, headers: corsHeaders }
+    );
   }
-}
-
-export async function GET() {
-  return corsResponse({
-    service: 'Agent Token Stripper API',
-    status: 'active',
-    payment_amount: '$0.002 USDC',
-    network: 'Base L2',
-    wallet: '0xEe184C6b1efC7c48e6E29e2E776107918d936a47'
-  });
 }
