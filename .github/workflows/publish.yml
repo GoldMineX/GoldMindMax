@@ -17,8 +17,9 @@ jobs:
         with:
           go-version: '>=1.22'
 
-      - name: Publish Server to Official MCP Registry
+      - name: Authenticate and Publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          go run github.com/modelcontextprotocol/registry/cmd/publisher@latest login github-oidc
           go run github.com/modelcontextprotocol/registry/cmd/publisher@latest publish
