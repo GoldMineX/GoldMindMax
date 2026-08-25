@@ -1,11 +1,11 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.GoldMineX/agent-token-stripper",
   "version": "1.0.0",
   "description": "Autonomous x402 Token Stripper API settling $0.002 USDC micro-payments on Base L2.",
   "repository": {
-    "type": "git",
-    "url": "https://github.com/GoldMineX/gold-mind-max"
+    "source": "github",
+    "url": "https://github.com/GoldMineX/GoldMindMax"
   },
   "transport": {
     "type": "http",
