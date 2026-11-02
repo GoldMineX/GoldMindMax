@@ -1,4 +1,5 @@
 # Agent Token Stripper (MCP Server + x402)
+<a href="https://mcprush.com/to/agent-token-stripper-mcp?ref=badge"><img width="380" height="200" src="https://mcprush.com/badge/agent-token-stripper-mcp/card.svg" alt="Agent Token Stripper MCP server" /></a>
 
 [![x402 Enabled](https://img.shields.io/badge/x402-Micro--Payments-blue)](https://basescan.org/address/0xEe184C6b1efC7c48e6E29e2E776107918d936a47)
 [![Base Network](https://img.shields.io/badge/Network-Base%20L2-0052FF)](https://base.org)
